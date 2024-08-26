@@ -1,22 +1,24 @@
 local redzlib = loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/RedzLibV5/main/Source.Lua"))()
 
 local Window = redzlib:MakeWindow({
-  Title = "Gab HUB",
+  Title = "🕷️Gab HUB🕷️",
   SubTitle = "Feito por Brasileiro",
   SaveFolder = "Redz Config"
 })
 
 --Tabs
-
-local Tab1 = Window:MakeTab({"Jogador", "cool"})
-local Tab2 = Window:MakeTab({"Admin", "cool"})
-local Tab3 = Window:MakeTab({"Brookhaven", "cool"})
-local Tab4 = Window:MakeTab({"Universal Scripts", "cool"})
+local Tab0 = Window:MakeTab({"❄️Gab Hub","cool"})
+local Tab1 = Window:MakeTab({"🙅🏼Jogador", "cool"})
+local Tab2 = Window:MakeTab({"🛠️Admin", "cool"})
+local Tab3 = Window:MakeTab({"🏡Brookhaven", "cool"})
+local Tab4 = Window:MakeTab({"✨Universal Scripts", "cool"})
 
 --Buttons
-
-Tab1:AddButton({"Print", function()
-print("Hello World!")
+Tab0:AddButton({"Youtube do developer", function()
+setclipboard("https://m.youtube.com/@GhZinn077")
+end})
+Tab1:AddButton({"Reset", function()
+game.Players.LocalPlayer.Character.Humanoid.Health = 0
 end})
 
 local Toggle1 = Tab1:AddToggle({
@@ -33,6 +35,17 @@ Tab1:AddSlider({
   Default = 16,
   Callback = function(Value)
   game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+  end
+})
+
+Tab1:AddSlider({
+  Name = "JumpPower",
+  Min = 1,
+  Max = 500,
+  Increase = 1,
+  Default = 16,
+  Callback = function(Value)
+  game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
   end
 })
 
