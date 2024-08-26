@@ -17,9 +17,6 @@ local Tab4 = Window:MakeTab({"✨Universal Scripts", "cool"})
 Tab0:AddButton({"Youtube do developer", function()
 setclipboard("https://m.youtube.com/@GhZinn077")
 end})
-Tab1:AddButton({"Vida", function()
-game.Players.LocalPlayer.Character.Humanoid.Health = 200
-end})
 Tab1:AddButton({"Reset", function()
 game.Players.LocalPlayer.Character.Humanoid.Health = 0
 end})
