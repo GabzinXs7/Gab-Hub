@@ -12,8 +12,19 @@ local Tab1 = Window:MakeTab({"🙅🏼Jogador", "cool"})
 local Tab2 = Window:MakeTab({"🛠️Admin", "cool"})
 local Tab3 = Window:MakeTab({"🏡Brookhaven", "cool"})
 local Tab4 = Window:MakeTab({"✨Universal Scripts", "cool"})
+local Tab5 = Window:MakeTab({"🍈Blox Fruits", "cool"})
+local Tab6 = Window:MakeTab({"📢 Atualizações", "cool"})
 
 --Buttons
+
+local Toggle1 = Tab6:AddToggle({
+  Name = "Nova atualização com scripts de Blox Fruits",
+  Description = "Scripts de Blox Fruits na seção: 🍈Blox Fruits",
+})
+local Toggle1 = Tab0:AddToggle({
+  Name = "Novos scripts no Hub",
+  Description = "veja a nova atualização na seção: 📢 Atualizações",
+})
 Tab0:AddButton({"Youtube do developer", function()
 setclipboard("https://m.youtube.com/@GhZinn077")
 end})
@@ -23,7 +34,7 @@ end})
 
 local Toggle1 = Tab1:AddToggle({
   Name = "Speed",
-  Description = "Modifica sua velocidade",
+  Description = "Modifica sua velocidade (Esse botão não funciona, somente o debaixo)",
   Default = false
 })
 
@@ -43,7 +54,7 @@ Tab1:AddSlider({
   Min = 1,
   Max = 500,
   Increase = 1,
-  Default = 16,
+  Default = 51,
   Callback = function(Value)
   game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
   end
@@ -260,4 +271,24 @@ end})
 
 Tab2:AddButton({"Fates Admin", function()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/fatesc/fates-admin/main/main.lua"))()
+end})
+
+Tab5:AddButton({"W-Azure", function()
+loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/3b2169cf53bc6104dabe8e19562e5cc2.lua"))()
+end})
+
+Tab5:AddButton({"RedZ Hub", function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/REDzHUB/BloxFruits/main/redz9999"))()
+end})
+
+Tab5:AddButton({"Cokka Hub", function()
+loadstring(game:HttpGet"https://raw.githubusercontent.com/UserDevEthical/Loadstring/main/CokkaHub.lua")()
+end})
+
+Tab5:AddButton({"AimLock PVP", function()
+loadstring(game:HttpGet("https://rentry.co/n55gmtpi/raw", true))()
+end})
+
+Tab5:AddButton({"Tsuo Hub", function()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Tsuo7/TsuoHub/main/Tsuoscripts"))()
 end})
