@@ -1,0 +1,253 @@
+--// Services
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+
+--// Library
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/lxte/lates-lib/main/Main.lua"))()
+local Window = Library:CreateWindow({
+    Title = "Blessed Hub",
+    Theme = "Dark",
+    Size = UDim2.fromOffset(570, 370),
+    Transparency = 0.2,
+    Blurring = true,
+    MinimizeKeybind = Enum.KeyCode.LeftAlt,
+})
+
+local Themes = {
+    Light = {
+        --// Frames:
+        Primary = Color3.fromRGB(232, 232, 232),
+        Secondary = Color3.fromRGB(255, 255, 255),
+        Component = Color3.fromRGB(245, 245, 245),
+        Interactables = Color3.fromRGB(235, 235, 235),
+
+        --// Text:
+        Tab = Color3.fromRGB(50, 50, 50),
+        Title = Color3.fromRGB(0, 0, 0),
+        Description = Color3.fromRGB(100, 100, 100),
+
+        --// Outlines:
+        Shadow = Color3.fromRGB(255, 255, 255),
+        Outline = Color3.fromRGB(210, 210, 210),
+
+        --// Image:
+        Icon = Color3.fromRGB(100, 100, 100),
+    },
+    
+    Dark = {
+        --// Frames:
+        Primary = Color3.fromRGB(30, 30, 30),
+        Secondary = Color3.fromRGB(35, 35, 35),
+        Component = Color3.fromRGB(40, 40, 40),
+        Interactables = Color3.fromRGB(45, 45, 45),
+
+        --// Text:
+        Tab = Color3.fromRGB(200, 200, 200),
+        Title = Color3.fromRGB(240, 240, 240),
+        Description = Color3.fromRGB(200, 200, 200),
+
+        --// Outlines:
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Outline = Color3.fromRGB(40, 40, 40),
+
+        --// Image:
+        Icon = Color3.fromRGB(220, 220, 220),
+    },
+    
+    Void = {
+        --// Frames:
+        Primary = Color3.fromRGB(15, 15, 15),
+        Secondary = Color3.fromRGB(20, 20, 20),
+        Component = Color3.fromRGB(25, 25, 25),
+        Interactables = Color3.fromRGB(30, 30, 30),
+
+        --// Text:
+        Tab = Color3.fromRGB(200, 200, 200),
+        Title = Color3.fromRGB(240, 240, 240),
+        Description = Color3.fromRGB(200, 200, 200),
+
+        --// Outlines:
+        Shadow = Color3.fromRGB(0, 0, 0),
+        Outline = Color3.fromRGB(40, 40, 40),
+
+        --// Image:
+        Icon = Color3.fromRGB(220, 220, 220),
+    },
+}
+
+--// Set the default theme
+Window:SetTheme(Themes.Dark)
+
+--// Sections
+Window:AddTabSection({
+    Name = "Main",
+    Order = 1,
+})
+
+--// Tab [MAIN]
+local Main = Window:AddTab({
+    Title = "Brookhaven RP",
+    Section = "Main",
+    Icon = "rbxassetid://10723407389"  -- Ícone da aba
+})
+
+-- Dropdown para pegar permissão
+Main:AddDropdown({
+    Title = "Pegar Permissão",
+    Description = "Escolha o nível de permissão",
+    Options = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37"},
+    Default = "1",
+    Callback = function(selected)
+        local level = tonumber(selected)
+        if level then
+            local args = { "GivePermissionLoopToServer", Players.LocalPlayer, level }
+            game:GetService("ReplicatedStorage").RE:FindFirstChild("1Playe1rTrigge1rEven1t"):FireServer(unpack(args))
+        end
+    end
+})
+
+-- Botão para pegar sofá
+Main:AddButton({
+    Title = "Pegar Sofá",
+    Description = "Pega um sofá",
+    Callback = function()
+        local args = { "PickingTools", "Couch" }
+        game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(args))
+    end
+})
+
+-- Botões de troll
+Main:AddButton({
+    Title = "Loopfling",
+    Description = "Executa um script de fling",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/CLEITI6966/HUB/refs/heads/main/fling.lua"))()
+    end,
+})
+
+Main:AddButton({
+    Title = "Vira uma Formiguinha",
+    Description = "Reduz o tamanho do personagem",
+    Callback = function()
+        local args = { "CharacterSizeDown", 4 }
+        game:GetService("ReplicatedStorage").RE:FindFirstChild("1Clothe1s"):FireServer(unpack(args))
+    end
+})
+
+Main:AddButton({
+    Title = "Resetar Personagem",
+    Description = "Restaura o tamanho do personagem",
+    Callback = function()
+        local args = { "CharacterSizeUp", 1 }
+        game:GetService("ReplicatedStorage").RE:FindFirstChild("1Clothe1s"):FireServer(unpack(args))
+    end
+})
+
+-- Dropdown para selecionar jogador
+local selectedPlayer = ""
+local function updatePlayerList()
+    local players = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer then
+            table.insert(players, player.Name)
+        end
+    end
+    return players
+end
+
+Main:AddDropdown({
+    Title = "Selecionar Jogador",
+    Description = "Escolha um jogador para teleportar",
+    Options = updatePlayerList(),
+    Callback = function(value)
+        selectedPlayer = value
+    end,
+})
+
+-- Botão para teleportar ao jogador selecionado
+Main:AddButton({
+    Title = "Teleportar para Jogador",
+    Description = "Teleporta até o jogador selecionado",
+    Callback = function()
+        local character = Players.LocalPlayer.Character
+        local targetPlayer = Players:FindFirstChild(selectedPlayer)
+
+        if character and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            character:SetPrimaryPartCFrame(targetPlayer.Character.HumanoidRootPart.CFrame)
+            Window:Notify({
+                Title = "Teleporte",
+                Description = "Teleporte realizado com sucesso!",
+                Duration = 5
+            })
+        else
+            warn("Jogador não encontrado ou não está disponível.")
+        end
+    end,
+})
+
+-- Toggle para observar o jogador selecionado
+local isViewing = false
+local originalCameraSubject
+
+Main:AddToggle({
+    Title = "Ver Jogador",
+    Description = "Toggle para seguir o jogador",
+    Callback = function(state)
+        local targetPlayer = Players:FindFirstChild(selectedPlayer)
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            if state then
+                originalCameraSubject = workspace.CurrentCamera.CameraSubject
+                workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
+                isViewing = true
+            else
+                workspace.CurrentCamera.CameraSubject = originalCameraSubject
+                isViewing = false
+            end
+        else
+            warn("Jogador não encontrado ou não está disponível.")
+        end
+    end,
+})
+
+-- Atualiza a lista de jogadores quando alguém entra ou sai do jogo
+Players.PlayerAdded:Connect(function()
+    Window:RefreshDropdown("Selecionar Jogador", updatePlayerList())
+end)
+
+Players.PlayerRemoving:Connect(function()
+    Window:RefreshDropdown("Selecionar Jogador", updatePlayerList())
+end)
+
+--// Tab [SETTINGS]
+local Settings = Window:AddTab({
+    Title = "Settings",
+    Section = "Settings",
+    Icon = "rbxassetid://11293977610",
+})
+
+Window:AddKeybind({
+    Title = "Minimize Keybind",
+    Description = "Defina o atalho para minimizar a interface",
+    Tab = Settings,
+    Callback = function(Key)
+        Window:SetSetting("Keybind", Key)
+    end,
+})
+
+Window:AddDropdown({
+    Title = "Definir Tema",
+    Description = "Escolha o tema da interface",
+    Tab = Settings,
+    Options = {
+        ["Modo Claro"] = "Light",
+        ["Modo Escuro"] = "Dark",
+        ["Extra Escuro"] = "Void",
+    },
+    Callback = function(Theme)
+        Window:SetTheme(Themes[Theme])
+    end,
+})
+
+Window:AddToggle({
+    Title = "UI Blur",
+    Description = "Se ativado, o Roblox deve ter as configurações grá
