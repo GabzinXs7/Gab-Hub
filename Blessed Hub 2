@@ -1,0 +1,603 @@
+-- Hub Brookhaven RP 🏡 [2024]
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Xtentacion178/Ehbsbebebe/main/Gdgehehe"))()
+
+MakeWindow({
+  Hub = {
+    Title = " ??? | BROOKHAVEN RP: V10.8 | 🏡",
+    Animation = "By : ???"
+  },
+  Key = {
+    KeySystem = false,
+    Title = "Key System",
+    Description = "",
+ Keys = {"12N5"},
+    Notifi = {
+      Notifications = true,
+      CorrectKey = "Executando o Script...",
+      Incorrectkey = "Está Senha Esta Incorreta",
+    }
+  }
+})
+
+MinimizeButton({
+  Image = "rbxassetid://17693207027",
+  Size = {42, 42},
+  Color = Color3.fromRGB(0, 0, 0),
+  Corner = false,
+  Stroke = true,
+  StrokeColor = Color3.fromRGB(255, 0, 0)
+})
+
+local Main = MakeTab({Name = "Welcome"})
+
+local Main = MakeTab({Name = "Trolling"})
+
+local section = AddSection(Main, {"Troll Section "})
+
+local players = game:GetService("Players")
+local runService = game:GetService("RunService")
+local localPlayer = players.LocalPlayer
+local camera = game.Workspace.CurrentCamera
+
+-- Variável para armazenar o nome do jogador a ser espectado
+local spectatePlayerName = ""
+local spectatePlayer
+
+-- Função para encontrar jogador por nome completo ou iniciais do primeiro nome com no mínimo 3 caracteres
+local function findPlayerByNameOrInitials(input)
+    input = input:lower()
+    if #input < 3 then
+        return nil -- Retorna nil se a entrada for menor que 3 caracteres
+    end
+
+    for _, player in pairs(players:GetPlayers()) do
+        local playerName = player.Name:lower()
+        local playerFirstName = playerName:match("^%S+")
+        if playerName == input or playerFirstName:sub(1, #input) == input then
+            return player
+        end
+    end
+    return nil
+end
+
+-- Função para alterar a câmera para a cabeça do jogador especificado
+local function spectatePlayer()
+    local targetPlayer = findPlayerByNameOrInitials(spectatePlayerName)
+    if targetPlayer and targetPlayer.Character then
+        local head = targetPlayer.Character:FindFirstChild("Head")
+        if head then
+            camera.CameraSubject = head
+        end
+    end
+end
+
+-- Função de callback para a TextBox
+local function onTextBoxInput(value)
+    spectatePlayerName = value
+    print("Player to Spectate:", spectatePlayerName)
+    if viewEnabled then
+        spectatePlayer()
+    end
+end
+
+-- Variável para controlar o estado do View
+local viewEnabled = false
+
+-- Função para garantir que a câmera continue espectando o jogador após respawn
+local function onCharacterAdded(character)
+    if viewEnabled and spectatePlayerName ~= "" then
+        wait(0.5) -- Esperar um pouco para garantir que a cabeça esteja carregada
+        spectatePlayer()
+    end
+end
+
+-- Função de callback para o botão de alternância de View
+local function onViewToggle(value)
+    viewEnabled = value
+    print("View Enabled:", viewEnabled)
+    
+    if viewEnabled then
+        spectatePlayer()
+        -- Conectar eventos para continuar espectando após respawn
+        localPlayer.CharacterAdded:Connect(onCharacterAdded)
+        if spectatePlayerName ~= "" then
+            local targetPlayer = findPlayerByNameOrInitials(spectatePlayerName)
+            if targetPlayer then
+                targetPlayer.CharacterAdded:Connect(onCharacterAdded)
+            end
+        end
+    else
+        camera.CameraSubject = localPlayer.Character:FindFirstChild("Humanoid")
+    end
+end
+
+-- Adiciona a TextBox para inserir o nome do jogador
+local TextBox = AddTextBox(Main, {
+    Name = "Player Name",
+    Default = "",
+    PlaceholderText = "Enter player name",
+    ClearText = false,
+    Callback = onTextBoxInput
+})
+
+-- Adiciona o botão de alternância "View"
+local Toggle = AddToggle(Main, {
+    Name = "View",
+    Default = false,
+    Callback = onViewToggle
+})
+
+local players = game:GetService("Players")
+local runService = game:GetService("RunService")
+local localPlayer = players.LocalPlayer
+local camera = game.Workspace.CurrentCamera
+local workspace = game.Workspace
+
+-- Variável para armazenar o nome do jogador a ser espectado ou trazido
+local targetPlayerName = ""
+local targetPlayer
+
+-- Variável para armazenar a posição original do jogador local
+local originalPosition = nil
+
+-- Variável para controlar o loop de teletransporte
+local bringPlayerLoop = false
+
+-- Função para encontrar jogador por nome completo ou iniciais do primeiro nome com no mínimo 3 caracteres
+local function findPlayerByNameOrInitials(input)
+    input = input:lower()
+    if #input < 3 then
+        return nil -- Retorna nil se a entrada for menor que 3 caracteres
+    end
+
+    for _, player in pairs(players:GetPlayers()) do
+        local playerName = player.Name:lower()
+        local playerFirstName = playerName:match("^%S+")
+        if playerName == input or playerFirstName:sub(1, #input) == input then
+            return player
+        end
+    end
+    return nil
+end
+
+-- Função para alterar a câmera para a cabeça do jogador especificado
+local function spectatePlayer()
+    local targetPlayer = findPlayerByNameOrInitials(targetPlayerName)
+    if targetPlayer and targetPlayer.Character then
+        local head = targetPlayer.Character:FindFirstChild("Head")
+        if head then
+            camera.CameraSubject = head
+        end
+    end
+end
+
+-- Função para teleportar o jogador específico para a posição do jogador local
+local function bringPlayer()
+    targetPlayer = findPlayerByNameOrInitials(targetPlayerName)
+    if targetPlayer and targetPlayer.Character and localPlayer.Character then
+        originalPosition = localPlayer.Character.HumanoidRootPart.Position
+        
+        local function teleport()
+            while bringPlayerLoop and targetPlayer and targetPlayer.Character do
+                local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                local seat = targetPlayer.Character:FindFirstChildOfClass("Seat")
+                if seat and seat.Occupant then
+                    localPlayer.Character:SetPrimaryPartCFrame(CFrame.new(originalPosition))
+                    bringPlayerLoop = false
+                    break
+                end
+                if targetHRP then
+                    localPlayer.Character:SetPrimaryPartCFrame(targetHRP.CFrame)
+                end
+                wait(0.1)
+            end
+        end
+        
+        -- Start the teleport loop in a new thread
+        spawn(teleport)
+    end
+end
+
+-- Função de callback para a TextBox
+local function onTextBoxInput(value)
+    targetPlayerName = value
+    print("Player to Target:", targetPlayerName)
+end
+
+-- Função de callback para o toggle
+local function onToggle(Value)
+    bringPlayerLoop = Value
+    if bringPlayerLoop then
+        bringPlayer()
+    end
+end
+
+-- Adiciona a TextBox para inserir o nome do jogador
+local TextBox = AddTextBox(Main, {
+    Name = "Player Name",
+    Default = "",
+    PlaceholderText = "Enter player name",
+    ClearText = false,
+    Callback = onTextBoxInput
+})
+
+-- Adiciona o toggle "Annoy Players"
+local Toggle = AddToggle(Main, {
+    Name = "Annoy Players",
+    Default = false,
+    Callback = onToggle
+})
+
+local section = AddSection(Main, {"Flings Section"})
+
+-- Serviços necessários
+local playerService = game:GetService('Players')
+local runService = game:GetService('RunService')
+local player = playerService.LocalPlayer
+
+-- Variáveis globais
+local selectedPlayer = nil
+local selectedKillAdvancedPlayer = nil
+local couchEquipped = false
+local playerDropdownV13
+local playerDropdownV14
+
+-- Função para obter a lista de jogadores
+local function getPlayerList()
+    local playerList = {}
+    for _, player in ipairs(playerService:GetPlayers()) do
+        if player ~= playerService.LocalPlayer then
+            table.insert(playerList, player.Name)
+        end
+    end
+    return playerList
+end
+
+-- Função para atualizar o dropdown
+local function updateDropdown(dropdown)
+    UpdateDropdown(dropdown, getPlayerList())
+end
+
+-- Função para encontrar jogador por nome
+local function gplr(String)
+    local strl = String:lower()
+    local Found = {}
+    for _, v in pairs(playerService:GetPlayers()) do
+        if v.Name:lower():sub(1, #strl) == strl then
+            table.insert(Found, v)
+        end
+    end
+    return Found
+end
+
+-- Função para flingar jogador (V13)
+local function flingPlayer(targetName)
+    local Target = gplr(targetName)
+    if Target[1] then
+        Target = Target[1]
+        
+        local Thrust = Instance.new('BodyThrust', player.Character.HumanoidRootPart)
+        Thrust.Force = Vector3.new(999, 999, 999)
+        Thrust.Name = "FlingForce"
+        repeat
+            player.Character.HumanoidRootPart.CFrame = Target.Character.HumanoidRootPart.CFrame
+            Thrust.Location = Target.Character.HumanoidRootPart.Position
+            runService.Heartbeat:Wait()
+        until not Target.Character:FindFirstChild("Head")
+    end
+end
+
+-- Função para flingar jogador avançado (V14)
+local function killAdvancedPlayer()
+    if selectedKillAdvancedPlayer then
+        local targetPlayer = playerService:FindFirstChild(selectedKillAdvancedPlayer)
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            -- Equipar o item 'Couch' no inventário se ainda não estiver equipado
+            local backpack = player.Backpack
+            if backpack and not couchEquipped then
+                local couch = backpack:FindFirstChild("Couch")
+                if couch then
+                    player.Character.Humanoid:EquipTool(couch)
+                    couchEquipped = true
+                else
+                    print("O item 'Couch' não foi encontrado no seu inventário.")
+                end
+            end
+
+            -- Looping de teleportes no jogador selecionado da lista
+            while true do
+                player.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
+                wait(0.0) -- Intervalo entre cada teleporte, ajuste conforme necessário
+                
+                -- Verifica se o jogador sentou no 'Couch' e realiza o teleporte para o céu
+                if targetPlayer.Character:FindFirstChild("Humanoid") and targetPlayer.Character.Humanoid.SeatPart then
+                    local teleportPosition = CFrame.new(-328, 17, 101) -- Teleporta para cima
+                    targetPlayer.Character.HumanoidRootPart.CFrame = teleportPosition
+                    wait(0.0) -- Espera um pouco antes de teleportar de volta para evitar bugs
+                    player.Character.HumanoidRootPart.CFrame = teleportPosition -- Teleporta de volta para a posição original
+                    break -- Sai do loop após teleportar de volta
+                end
+            end
+            
+            -- Remove o item 'Couch' da mão do jogador após o teleporte para o céu
+            if couchEquipped then
+                local character = player.Character
+                if character then
+                    local couch = character:FindFirstChild("Couch")
+                    if couch then
+                        couch.Parent = player.Backpack -- Move o 'Couch' de volta para o inventário
+                        couchEquipped = false
+                    end
+                end
+            end
+        else
+            print("Jogador não encontrado ou não está disponível.")
+        end
+    else
+        print("Nenhum jogador selecionado para o Fling Avançado.")
+    end
+end
+
+-- Interface para Fling V13
+playerDropdownV13 = AddDropdown(Main, {
+    Name = "Selecione o Jogador para Fling [V13]",
+    Default = "",
+    Options = getPlayerList(),
+    Callback = function(value)
+        selectedPlayer = value
+    end
+})
+
+AddButton(Main, {
+    Name = "Fling [V13]",
+    Callback = function()
+        if selectedPlayer then
+            flingPlayer(selectedPlayer)
+        end
+    end
+})
+
+-- Atualiza a lista de jogadores quando os jogadores entram ou saem do jogo
+playerService.PlayerAdded:Connect(function()
+    updateDropdown(playerDropdownV13)
+end)
+
+playerService.PlayerRemoving:Connect(function()
+    updateDropdown(playerDropdownV13)
+end)
+
+-- Atualiza a lista de jogadores ao iniciar o script
+updateDropdown(playerDropdownV13)
+
+-- Interface para Fling V14
+local playerDropdownV14 = AddDropdown(Main, {
+    Name = "Selecione o Jogador para Fling [V14]",
+    Default = "",
+    Options = getPlayerList(),
+    Callback = function(playerName)
+        selectedKillAdvancedPlayer = playerName
+    end
+})
+
+-- Atualiza a lista de jogadores quando os jogadores entram ou saem do jogo
+playerService.PlayerAdded:Connect(function()
+    updateDropdown(playerDropdownV14)
+end)
+
+playerService.PlayerRemoving:Connect(function()
+    updateDropdown(playerDropdownV14)
+end)
+
+-- Atualiza a lista de jogadores ao iniciar o script
+updateDropdown(playerDropdownV14)
+
+
+AddButton(Main, {
+    Name = "Fling [V14] [Updated]",
+    Callback = function()
+        killAdvancedPlayer()
+    end
+})
+
+local section = AddSection(Main, {"Selecione um Método de Fling"})
+
+-- Interface para Selecionar Método de Kill
+local killMethodDropdown = AddDropdown(Main, {
+    Name = "Selecionar Método De Kill",
+    Default = "Couch",
+    Options = {"Nenhum", "Couch"},
+    Callback = function(value)
+        if value == "Couch" then
+            local args = {
+                [1] = "PickingTools",
+                [2] = "Couch"
+            }
+            game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(args))
+            print('Hello!')
+        elseif value == "Nenhum" then
+            -- Código a ser executado quando "Nenhum" for selecionado
+            print("Nenhum método selecionado.")
+        end
+    end
+})
+
+local section = AddSection(Main, {"Super Small"})
+
+AddButton(Main, {
+  Name = "Super Small",
+     Callback = function()
+        -- Cria os argumentos para diminuir o tamanho do personagem
+        local args = {
+            [1] = "CharacterSizeDown",
+            [2] = 4
+        }
+        -- Envia um pedido ao servidor para diminuir o tamanho do personagem
+        game:GetService("ReplicatedStorage").RE:FindFirstChild("1Clothe1s"):FireServer(unpack(args))
+    end
+})
+
+-- Serviço necessário para manipular as atualizações de tempo
+local runService = game:GetService('RunService')
+-- Referência ao jogador local
+local player = game.Players.LocalPlayer
+-- Variáveis para a conexão e o efeito de impulso do corpo
+local connection
+local bodyThrust
+
+-- Função para desativar as colisões do personagem
+local function disableCollisions(character)
+    if character and character:FindFirstChild("Head") and character:FindFirstChild("UpperTorso") and character:FindFirstChild("LowerTorso") and character:FindFirstChild("HumanoidRootPart") then
+        character.Head.CanCollide = false
+        character.UpperTorso.CanCollide = false
+        character.LowerTorso.CanCollide = false
+        character.HumanoidRootPart.CanCollide = false
+    end
+end
+
+-- Função para reativar as colisões do personagem
+local function resetCollisions(character)
+    if character and character:FindFirstChild("Head") and character:FindFirstChild("UpperTorso") and character:FindFirstChild("LowerTorso") and character:FindFirstChild("HumanoidRootPart") then
+        character.Head.CanCollide = true
+        character.UpperTorso.CanCollide = true
+        character.LowerTorso.CanCollide = true
+        character.HumanoidRootPart.CanCollide = true
+    end
+end
+
+-- Função chamada quando o personagem é adicionado
+local function onCharacterAdded(character)
+    -- Desconecta qualquer conexão existente
+    if connection then
+        connection:Disconnect()
+    end
+
+    -- Conecta-se ao evento Stepped para desativar as colisões continuamente
+    connection = runService.Stepped:Connect(function()
+        disableCollisions(character)
+    end)
+end
+
+-- Conecta a função onCharacterAdded ao evento CharacterAdded
+player.CharacterAdded:Connect(onCharacterAdded)
+-- Se o personagem já estiver presente, executa onCharacterAdded imediatamente
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+
+-- Função para ativar o Spin Fling
+local function activateSpinFling()
+    local character = player.Character or player.CharacterAdded:Wait()
+    local power = 1000 -- Pode ajustar isso para alterar a força do impulso
+
+    -- Cria um novo BodyThrust
+    bodyThrust = Instance.new("BodyThrust")
+    bodyThrust.Parent = character.HumanoidRootPart
+    bodyThrust.Force = Vector3.new(power, 400, power)
+    bodyThrust.Location = character.HumanoidRootPart.Position
+
+    -- Desativa as colisões
+    connection = runService.Stepped:Connect(function()
+        disableCollisions(character)
+    end)
+
+    print("Spin Fling V4 ativado!")
+end
+
+-- Função para desativar o Spin Fling
+local function deactivateSpinFling()
+    local character = player.Character or player.CharacterAdded:Wait()
+
+    -- Desconecta a função de desativação de colisões
+    if connection then
+        connection:Disconnect()
+        connection = nil
+    end
+
+    -- Remove o efeito de impulso do corpo
+    if bodyThrust then
+        bodyThrust:Destroy()
+        bodyThrust = nil
+    end
+
+    -- Restaura as colisões do personagem
+    resetCollisions(character)
+
+    print("Spin Fling V4 desativado!")
+end
+
+-- Adiciona um Toggle para ativar/desativar o Spin Fling na aba principal
+AddToggle(Main, {
+  Name = "Spin Fling V4",
+  Default = false,
+  Callback = function(Value)
+    if Value then
+        activateSpinFling()
+    else
+        deactivateSpinFling()
+    end
+  end
+})
+
+local section = AddSection(Main, {"All Section"})
+
+AddButton(Main, {
+  Name = "Bring All",
+Callback = function()
+        loadstring(game:HttpGet("https://pastebin.com/raw/zqyDSUWX"))()
+    end
+})
+
+-- Função para executar a ação de alerta com a arma
+local function alarmGun()
+    -- Puxa o item Sniper
+    local args = {
+        [1] = "PickingTools",
+        [2] = "Sniper"
+    }
+    game:GetService("ReplicatedStorage").RE:FindFirstChild("1Too1l"):InvokeServer(unpack(args))
+
+    -- Equipa o item Sniper
+    local backpack = game.Players.LocalPlayer.Backpack
+    local character = game.Players.LocalPlayer.Character
+
+    local sniper = backpack:FindFirstChild("Sniper") or character:FindFirstChild("Sniper")
+
+    if sniper then
+        -- Se o item for encontrado, equipá-lo
+        game.Players.LocalPlayer.Character.Humanoid:EquipTool(sniper)
+
+        -- Teleportar o jogador para as coordenadas especificadas
+        character.HumanoidRootPart.CFrame = CFrame.new(315, 5, 42)
+
+        print("AlarmGun equipado e jogador teleportado!")
+    else
+        -- Se o item não for encontrado, exibir uma mensagem de erro
+        print("Sniper não encontrado no inventário ou personagem.")
+    end
+end
+
+-- Adicionar o botão "AlarmGun" à seção "Misc Section"
+AddButton(Main, {
+    Name = "AlarmGun",
+    Description = "Equipa a Sniper e teleporta para a coordenada 315, 5, 42",
+    Callback = function()
+        alarmGun()
+    end
+})
+
+local section = AddSection(Main, {"Protection Section"})
+
+-- Função para ativar ou desativar a proteção contra o vazio
+local function ToggleVoidProtection(bool)
+    if bool then
+        game.Workspace.FallenPartsDestroyHeight = 0/0
+    else
+        game.Workspace.FallenPartsDestroyHeight = -9999999999999999
+    end
+end 
+
+-- Adicionar o botão toggle "Void Protection V4" à seção "Main"
+AddToggle(Main, {
+    Name = "Void Protection V4",
+   
