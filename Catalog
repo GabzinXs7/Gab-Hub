@@ -1,0 +1,325 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local Window = Fluent:CreateWindow({
+    Title = "Blessed Hub",
+    SubTitle = "by Gab Scripts",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Theme = "Dark",
+})
+
+local Tabs = {
+    Main = Window:AddTab({ Title = "Main" }),
+    Esp = Window:AddTab({ Title = "Esp" })
+}
+
+-- Variáveis globais
+local SelectedPlayer = nil
+local PlayerService = game:GetService("Players")
+local Mouse = PlayerService.LocalPlayer:GetMouse()
+local ToggleActive = false
+local ColorChangeActive = false
+local AutoEquipSkins = false
+local SavedSkinName = ""
+
+-- Função para buscar jogador por DisplayName ou Username
+local function GetPlayerByName(query)
+    for _, player in ipairs(PlayerService:GetPlayers()) do
+        if player.Name:lower():sub(1, #query) == query:lower() or 
+           player.DisplayName:lower():sub(1, #query) == query:lower() then
+            return player
+        end
+    end
+    return nil
+end
+
+-- Função para copiar a skin do jogador
+local function CopyPlayerSkin(player)
+    if player and player.Character then
+        local args = {
+            [1] = player.Character.Humanoid.HumanoidDescription,
+            [2] = true
+        }
+        game:GetService("ReplicatedStorage").Events.TryBuy.Try:FireServer(unpack(args))
+    end
+end
+
+-- Função para equipar automaticamente a skin de todos os jogadores no servidor
+local function AutoEquipAllSkins()
+    task.spawn(function()
+        while AutoEquipSkins do
+            for _, player in ipairs(PlayerService:GetPlayers()) do
+                if player ~= PlayerService.LocalPlayer then
+                    CopyPlayerSkin(player)
+                end
+            end
+            task.wait(1) -- Aguarda 1 segundo antes de copiar novamente
+        end
+    end)
+end
+
+-- Função para alterar continuamente a cor do personagem rapidamente
+local function StartColorChange()
+    task.spawn(function()
+        while ColorChangeActive do
+            local player = PlayerService.LocalPlayer
+            if player and player.Character and player.Character:FindFirstChild("Humanoid") then
+                local newColor = Color3.new(math.random(), math.random(), math.random())
+                local args = {
+                    [1] = {
+                        ["BodyColor"] = {
+                            ["HeadColor"] = newColor,
+                            ["TorsoColor"] = newColor,
+                            ["LeftArmColor"] = newColor,
+                            ["RightArmColor"] = newColor,
+                            ["LeftLegColor"] = newColor,
+                            ["RightLegColor"] = newColor
+                        }
+                    }
+                }
+                game:GetService("ReplicatedStorage").BloxbizRemotes.CatalogOnApplyToRealHumanoid:FireServer(unpack(args))
+            end
+            task.wait(0.1) -- Mudança rápida de cor (0,1 segundo)
+        end
+    end)
+end
+
+-- Input para selecionar jogador
+local PlayerInput = Tabs.Main:AddInput("PlayerInput", {
+    Title = "Nome ou Display Name",
+    Placeholder = "Digite as iniciais...",
+    Callback = function(value)
+        SelectedPlayer = GetPlayerByName(value)
+    end
+})
+
+-- Toggle para visualizar o jogador
+local ViewToggle = Tabs.Main:AddToggle("ViewToggle", {
+    Title = "Visualizar Jogador",
+    Default = false,
+    Callback = function(state)
+        if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            if state then
+                game.Workspace.CurrentCamera.CameraSubject = SelectedPlayer.Character.Humanoid
+            else
+                game.Workspace.CurrentCamera.CameraSubject = PlayerService.LocalPlayer.Character.Humanoid
+            end
+        else
+            Fluent:Notify({ Title = "Erro", Content = "Nenhum jogador válido selecionado." })
+        end
+    end
+})
+
+Tabs.Main:AddButton({
+    Title = "Teleportar até Jogador",
+    Description = "Teleporta você até o jogador selecionado.",
+    Callback = function()
+        if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local playerRoot = PlayerService.LocalPlayer.Character and PlayerService.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            local targetRoot = SelectedPlayer.Character.HumanoidRootPart
+
+            if playerRoot then
+                playerRoot.CFrame = targetRoot.CFrame
+                Fluent:Notify({ Title = "Teleporte", Content = "Teleportado para " .. SelectedPlayer.Name, Duration = 8 })
+            else
+                Fluent:Notify({ Title = "Erro", Content = "HumanoidRootPart não encontrado.", Duration = 8 })
+            end
+        else
+            Fluent:Notify({ Title = "Erro", Content = "Nenhum jogador válido selecionado.", Duration = 8 })
+        end
+    end
+})
+
+-- Botão para copiar a skin do jogador selecionado
+Tabs.Main:AddButton({
+    Title = "Copiar Skin",
+    Description = "Copie a skin do jogador selecionado.",
+    Callback = function()
+        if SelectedPlayer then
+            CopyPlayerSkin(SelectedPlayer)
+        else
+            Fluent:Notify({ Title = "Erro", Content = "Nenhum jogador válido selecionado." })
+        end
+    end
+})
+
+-- Toggle para copiar a skin ao clicar no jogador
+local ClickCopyToggle = Tabs.Main:AddToggle("ClickCopyToggle", {
+    Title = "Copiar Skin ao Clicar",
+    Default = false,
+    Callback = function(state)
+        ToggleActive = state
+    end
+})
+
+-- Detecta clique e copia a skin do jogador clicado
+Mouse.Button1Down:Connect(function()
+    if ToggleActive then
+        local target = Mouse.Target
+        if target and target.Parent:IsA("Model") and PlayerService:GetPlayerFromCharacter(target.Parent) then
+            local player = PlayerService:GetPlayerFromCharacter(target.Parent)
+            CopyPlayerSkin(player)
+        end
+    end
+end)
+
+-- Toggle para mudar a cor do personagem continuamente
+local ColorChangeToggle = Tabs.Main:AddToggle("ColorChangeToggle", {
+    Title = "Mudar Cor do Personagem",
+    Default = false,
+    Callback = function(state)
+        ColorChangeActive = state
+        if state then
+            StartColorChange()
+        end
+    end
+})
+
+-- Função para equipar skins continuamente
+local function AutoEquipAllSkins()
+    task.spawn(function()
+        while AutoEquipSkins do
+            for _, player in ipairs(PlayerService:GetPlayers()) do
+                if player ~= PlayerService.LocalPlayer then
+                    CopyPlayerSkin(player)
+                    task.wait(0.1) -- Troca rápida de skins
+                end
+            end
+        end
+    end)
+end
+
+-- Toggle para equipar skins continuamente
+local AutoEquipToggle = Tabs.Main:AddToggle("AutoEquipToggle", {
+    Title = "Equipar Skins Continuamente",
+    Default = false,
+    Callback = function(state)
+        AutoEquipSkins = state
+        if state then
+            AutoEquipAllSkins()
+            Fluent:Notify({ Title = "Equipar Skins", Content = "Equipando skins...", Duration = 8 })
+        else
+            Fluent:Notify({ Title = "Equipar Skins", Content = "Parado.", Duration = 8 })
+        end
+    end
+})
+
+-- Input para definir o nome da skin salva
+local SkinNameInput = Tabs.Main:AddInput("SkinNameInput", {
+    Title = "Nome da Skin",
+    Placeholder = "Digite o nome...",
+    Callback = function(value)
+        SavedSkinName = value
+    end
+})
+
+-- Botão para salvar a skin
+Tabs.Main:AddButton({
+    Title = "Salvar Skin",
+    Description = "Salva a skin atual.",
+    Callback = function()
+        if SavedSkinName ~= "" then
+            local args = { "create", SavedSkinName }
+            game:GetService("ReplicatedStorage").AvatarEditor.RemoteEvent:FireServer(unpack(args))
+            Fluent:Notify({ Title = "Salvar Skin", Content = "Skin salva: " .. SavedSkinName, Duration = 8 })
+        else
+            Fluent:Notify({ Title = "Erro", Content = "Defina um nome para salvar.", Duration = 8 })
+        end
+    end
+})
+
+-- Variáveis Globais
+local PlayerService = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local ESPActive = false
+local ESPLineActive = false
+local UseDisplayName = false
+local ESPNameColor = Color3.fromRGB(96, 205, 255)
+local ESPLinhaColor = Color3.fromRGB(96, 205, 255)
+
+-- Função para criar ESP no jogador
+local function CreateESP(player)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        -- Nome ESP
+        if ESPActive then
+            local billboard = Instance.new("BillboardGui", player.Character.HumanoidRootPart)
+            billboard.Name = "ESPName"
+            billboard.Size = UDim2.new(0, 200, 0, 50)
+            billboard.Adornee = player.Character.HumanoidRootPart
+            billboard.AlwaysOnTop = true
+
+            local textLabel = Instance.new("TextLabel", billboard)
+            textLabel.Text = UseDisplayName and player.DisplayName or player.Name
+            textLabel.Size = UDim2.new(1, 0, 1, 0)
+            textLabel.TextColor3 = ESPNameColor
+            textLabel.BackgroundTransparency = 1
+        end
+
+        -- Linha ESP
+        if ESPLineActive then
+            local line = Drawing.new("Line")
+            line.Color = ESPLinhaColor
+            line.From = Workspace.CurrentCamera.CFrame.Position
+            line.To = player.Character.HumanoidRootPart.Position
+            line.Visible = true
+
+            -- Atualiza a linha em tempo real
+            game:GetService("RunService").RenderStepped:Connect(function()
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    line.To = player.Character.HumanoidRootPart.Position
+                else
+                    line.Visible = false
+                end
+            end)
+        end
+    end
+end
+
+-- Função para remover ESP
+local function RemoveESP(player)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        if player.Character.HumanoidRootPart:FindFirstChild("ESPName") then
+            player.Character.HumanoidRootPart.ESPName:Destroy()
+        end
+    end
+end
+
+-- Toggle para ESP Name
+Tabs.Esp:AddToggle("ESPNameToggle", {
+    Title = "Ativar ESP Nome",
+    Callback = function(state)
+        ESPActive = state
+        for _, player in ipairs(PlayerService:GetPlayers()) do
+            if state then
+                CreateESP(player)
+            else
+                RemoveESP(player)
+            end
+        end
+    end
+})
+
+-- Colorpicker para ESP Nome
+local ESPNameColorPicker = Tabs.Esp:AddColorpicker("ESPNameColorPicker", {
+    Title = "Cor do ESP Nome",
+    Default = Color3.fromRGB(96, 205, 255)
+})
+
+ESPNameColorPicker:OnChanged(function()
+    ESPNameColor = ESPNameColorPicker.Value
+    for _, player in ipairs(PlayerService:GetPlayers()) do
+        if ESPActive then
+            RemoveESP(player)
+            CreateESP(player)
+        end
+    end
+end)
+
+-- Seleciona a primeira aba ao carregar
+Window:SelectTab(1)
+
+-- Notificação de script carregado
+Fluent:Notify({
+    Title = "Fluent",
+    Content = "Script carregado.",
+    Duration = 8
+})
