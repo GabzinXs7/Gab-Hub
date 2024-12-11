@@ -1,148 +1,934 @@
-local httpService = game:GetService("HttpService")
+repeat task.wait(0.25) until game:IsLoaded(); 
+getgenv().Image = "rbxassetid://7229442422"; -- put a asset id in here to make it work 
+getgenv().ToggleUI = "E" -- This where you can Toggle the Fluent ui library 
 
-local InterfaceManager = {} do
-	InterfaceManager.Folder = "FluentSettings"
-    InterfaceManager.Settings = {
-        Theme = "Dark",
-        Acrylic = true,
-        Transparency = true,
-        MenuKeybind = "LeftControl"
-    }
+task.spawn(function() 
+    if not getgenv().LoadedMobileUI == true then getgenv().LoadedMobileUI = true 
+        local OpenUI = Instance.new("ScreenGui"); 
+        local ImageButton = Instance.new("ImageButton"); 
+        local UICorner = Instance.new("UICorner"); 
+        OpenUI.Name = "OpenUI"; 
+        OpenUI.Parent = game:GetService("CoreGui"); 
+        OpenUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling; 
+        ImageButton.Parent = OpenUI; 
+        ImageButton.BackgroundColor3 = Color3.fromRGB(105,105,105); 
+        ImageButton.BackgroundTransparency = 0.8 
+        ImageButton.Position = UDim2.new(0.9,0,0.1,0); 
+        ImageButton.Size = UDim2.new(0,50,0,50); 
+        ImageButton.Image = getgenv().Image; 
+        ImageButton.Draggable = true; 
+        ImageButton.Transparency = 1; 
+        UICorner.CornerRadius = UDim.new(0,200); 
+        UICorner.Parent = ImageButton; 
+        ImageButton.MouseButton1Click:Connect(function() 
+            game:GetService("VirtualInputManager"):SendKeyEvent(true,getgenv().ToggleUI,false,game); 
+        end) 
+    end 
+end) 
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))() 
 
-    local isMinimized = false  -- Estado inicial da interface
+local Window = Fluent:CreateWindow({ 
+    Title = "Blessed Hub " .. Fluent.Version, 
+    SubTitle = "", 
+    TabWidth = 160, 
+    Size = UDim2.fromOffset(830, 525), 
+    Resize = true, 
+    MinSize = Vector2.new(470, 380), 
+    Acrylic = true, -- The blur may be detectable, setting this to false disables blur entirely 
+    Theme = "Darker", 
+    MinimizeKey = Enum.KeyCode.E -- Used when theres no MinimizeKeybind 
+}) 
 
-    function InterfaceManager:SetFolder(folder)
-		self.Folder = folder;
-		self:BuildFolderTree()
-	end
+--Fluent provides Lucide Icons https://lucide.dev/icons/ for the tabs, icons are optional 
+local Tabs = { 
+    Main = Window:AddTab({ Title = "Main", Icon = "home" }), 
+    Player = Window:AddTab({ Title = "Player", Icon = "user" }), 
+    Esp = Window:AddTab({ Title = "Esp", Icon = "bluetooth" }) 
+ } 
 
-    function InterfaceManager:SetLibrary(library)
-		self.Library = library
-	end
+-- Variáveis globais 
+local SelectedPlayer = nil 
+local PlayerService = game:GetService("Players") 
+local Mouse = PlayerService.LocalPlayer:GetMouse() 
+local ToggleActive = false 
+local ColorChangeActive = false 
+local AutoEquipSkins = false 
+local SavedSkinName = "" 
 
-    function InterfaceManager:BuildFolderTree()
-		local paths = {}
-		local parts = self.Folder:split("/")
-		for idx = 1, #parts do
-			paths[#paths + 1] = table.concat(parts, "/", 1, idx)
-		end
+-- Função para buscar jogador por DisplayName ou Username 
+local function GetPlayerByName(query) 
+    for _, player in ipairs(PlayerService:GetPlayers()) do 
+        if player.Name:lower():sub(1, #query) == query:lower() or  
+           player.DisplayName:lower():sub(1, #query) == query:lower() then 
+            return player 
+        end 
+    end 
+    return nil 
+end 
 
-		table.insert(paths, self.Folder)
-		table.insert(paths, self.Folder .. "/settings")
+-- Função para copiar a skin do jogador 
+local function CopyPlayerSkin(player) 
+    if player and player.Character then 
+        local args = { 
+            [1] = player.Character.Humanoid.HumanoidDescription, 
+            [2] = true 
+        } 
+        game:GetService("ReplicatedStorage").Events.TryBuy.Try:FireServer(unpack(args)) 
+    end 
+end 
 
-		for i = 1, #paths do
-			local str = paths[i]
-			if not isfolder(str) then
-				makefolder(str)
-			end
-		end
-	end
+-- Função para equipar automaticamente a skin de todos os jogadores no servidor 
+local function AutoEquipAllSkins() 
+    task.spawn(function() 
+        while AutoEquipSkins do 
+            for _, player in ipairs(PlayerService:GetPlayers()) do 
+                if player ~= PlayerService.LocalPlayer then 
+                    CopyPlayerSkin(player) 
+                end 
+            end 
+            task.wait(1) -- Aguarda 1 segundo antes de copiar novamente 
+        end 
+    end) 
+end 
 
-    function InterfaceManager:SaveSettings()
-        writefile(self.Folder .. "/options.json", httpService:JSONEncode(InterfaceManager.Settings))
-    end
+-- Função para alterar continuamente a cor do personagem rapidamente 
+local function StartColorChange() 
+    task.spawn(function() 
+        while ColorChangeActive do 
+            local player = PlayerService.LocalPlayer 
+            if player and player.Character and player.Character:FindFirstChild("Humanoid") then 
+                local newColor = Color3.new(math.random(), math.random(), math.random()) 
+                local args = { 
+                    [1] = { 
+                        ["BodyColor"] = { 
+                            ["HeadColor"] = newColor, 
+                            ["TorsoColor"] = newColor, 
+                            ["LeftArmColor"] = newColor, 
+                            ["RightArmColor"] = newColor, 
+                            ["LeftLegColor"] = newColor, 
+                            ["RightLegColor"] = newColor 
+                        } 
+                    } 
+                } 
+                game:GetService("ReplicatedStorage").BloxbizRemotes.CatalogOnApplyToRealHumanoid:FireServer(unpack(args)) 
+            end 
+            task.wait(0.1) -- Mudança rápida de cor (0,1 segundo) 
+        end 
+    end) 
+end 
 
-    function InterfaceManager:LoadSettings()
-        local path = self.Folder .. "/options.json"
-        if isfile(path) then
-            local data = readfile(path)
-            local success, decoded = pcall(httpService.JSONDecode, httpService, data)
+-- Input para selecionar jogador 
+local PlayerInput = Tabs.Main:AddInput("PlayerInput", { 
+    Title = "Nome ou Display Name", 
+    Placeholder = "Digite as iniciais...", 
+    Callback = function(value) 
+        SelectedPlayer = GetPlayerByName(value) 
+    end 
+}) 
 
-            if success then
-                for i, v in next, decoded do
-                    InterfaceManager.Settings[i] = v
-                end
-            end
+-- Toggle para visualizar o jogador 
+local ViewToggle = Tabs.Main:AddToggle("ViewToggle", { 
+    Title = "Visualizar Jogador", 
+    Default = false, 
+    Callback = function(state) 
+        if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") then 
+            if state then 
+                game.Workspace.CurrentCamera.CameraSubject = SelectedPlayer.Character.Humanoid 
+            else 
+                game.Workspace.CurrentCamera.CameraSubject = PlayerService.LocalPlayer.Character.Humanoid 
+            end 
+        else 
+            Fluent:Notify({ Title = "Erro", Content = "Nenhum jogador válido selecionado." }) 
+        end 
+    end 
+}) 
+
+Tabs.Main:AddButton({ 
+    Title = "Teleportar até Jogador", 
+    Description = "Teleporta você até o jogador selecionado.", 
+    Callback = function() 
+        if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("HumanoidRootPart") then 
+            local playerRoot = PlayerService.LocalPlayer.Character and PlayerService.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") 
+            local targetRoot = SelectedPlayer.Character.HumanoidRootPart 
+
+            if playerRoot then 
+                playerRoot.CFrame = targetRoot.CFrame 
+                Fluent:Notify({ Title = "Teleporte", Content = "Teleportado para " .. SelectedPlayer.Name, Duration = 8 }) 
+            else 
+                Fluent:Notify({ Title = "Erro", Content = "HumanoidRootPart não encontrado.", Duration = 8 }) 
+            end 
+        else 
+            Fluent:Notify({ Title = "Erro", Content = "Nenhum jogador válido selecionado.", Duration = 8 }) 
+        end 
+    end 
+}) 
+
+-- Botão para copiar a skin do jogador selecionado 
+Tabs.Main:AddButton({ 
+    Title = "Copiar Skin", 
+    Description = "Copie a skin do jogador selecionado.", 
+    Callback = function() 
+        if SelectedPlayer then 
+            CopyPlayerSkin(SelectedPlayer) 
+        else 
+            Fluent:Notify({ Title = "Erro", Content = "Nenhum jogador válido selecionado." }) 
+        end 
+    end 
+}) 
+
+-- Toggle para copiar a skin ao clicar no jogador 
+local ClickCopyToggle = Tabs.Main:AddToggle("ClickCopyToggle", { 
+    Title = "Copiar Skin ao Clicar", 
+    Default = false, 
+    Callback = function(state) 
+        ToggleActive = state 
+    end 
+}) 
+
+-- Detecta clique e copia a skin do jogador clicado 
+Mouse.Button1Down:Connect(function() 
+    if ToggleActive then 
+        local target = Mouse.Target 
+        if target and target.Parent:IsA("Model") and PlayerService:GetPlayerFromCharacter(target.Parent) then 
+            local player = PlayerService:GetPlayerFromCharacter(target.Parent) 
+            CopyPlayerSkin(player) 
+        end 
+    end 
+end) 
+
+-- Toggle para mudar a cor do personagem continuamente 
+local ColorChangeToggle = Tabs.Main:AddToggle("ColorChangeToggle", { 
+    Title = "Mudar Cor do Personagem", 
+    Default = false, 
+    Callback = function(state) 
+        ColorChangeActive = state 
+        if state then 
+            StartColorChange() 
+        end 
+    end 
+}) 
+
+-- Função para equipar skins continuamente 
+local function AutoEquipAllSkins() 
+    task.spawn(function() 
+        while AutoEquipSkins do 
+            for _, player in ipairs(PlayerService:GetPlayers()) do 
+                if player ~= PlayerService.LocalPlayer then 
+                    CopyPlayerSkin(player) 
+                    task.wait(0.1) -- Troca rápida de skins 
+                end 
+            end 
+        end 
+    end) 
+end 
+
+-- Toggle para equipar skins continuamente 
+local AutoEquipToggle = Tabs.Main:AddToggle("AutoEquipToggle", { 
+    Title = "Equipar Skins Continuamente", 
+    Default = false, 
+    Callback = function(state) 
+        AutoEquipSkins = state 
+        if state then 
+            AutoEquipAllSkins() 
+            Fluent:Notify({ Title = "Equipar Skins", Content = "Equipando skins...", Duration = 8 }) 
+        else 
+            Fluent:Notify({ Title = "Equipar Skins", Content = "Parado.", Duration = 8 }) 
+        end 
+    end 
+}) 
+
+-- Input para definir o nome da skin salva 
+local SkinNameInput = Tabs.Main:AddInput("SkinNameInput", { 
+    Title = "Nome da Skin", 
+    Placeholder = "Digite o nome...", 
+    Callback = function(value) 
+        SavedSkinName = value 
+    end 
+}) 
+
+-- Botão para salvar a skin 
+Tabs.Main:AddButton({ 
+    Title = "Salvar Skin", 
+    Description = "Salva a skin atual.", 
+    Callback = function() 
+        if SavedSkinName ~= "" then 
+            local args = { "create", SavedSkinName } 
+            game:GetService("ReplicatedStorage").AvatarEditor.RemoteEvent:FireServer(unpack(args)) 
+            Fluent:Notify({ Title = "Salvar Skin", Content = "Skin salva: " .. SavedSkinName, Duration = 8 }) 
+        else 
+            Fluent:Notify({ Title = "Erro", Content = "Defina um nome para salvar.", Duration = 8 }) 
+        end 
+    end 
+}) 
+
+local SprintToggle = Tabs.Player:AddToggle("SprintToggle", { 
+    Title = "Sprint", 
+    Description = "Ativa/desativa o sprint", 
+    Default = false, 
+    Callback = function(value) 
+        if value then 
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 24 
+            print("Sprint ativado: WalkSpeed = 24") 
+        else 
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 16 
+            print("Sprint desativado: WalkSpeed = 16") 
+        end 
+    end 
+}) 
+
+-- Campo de input para a velocidade 
+local SpeedInput = Tabs.Player:AddInput("SpeedInput", { 
+    Title = "WalkSpeed (16 é o padrão)", 
+    Description = "Digite o valor desejado", 
+    Placeholder = "Número aqui", 
+    Type = "number", 
+    Callback = function(value) 
+        value = tonumber(value) -- Converte o valor para número 
+        if value then 
+            game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value 
+            print("Velocidade aplicada:", value) 
+        else 
+            print("Por favor, insira um número válido.") 
+        end 
+    end 
+}) 
+
+local TeleportService = game:GetService("TeleportService") 
+local PlaceId = game.PlaceId 
+local Player = game.Players.LocalPlayer 
+
+-- Botão para reentrar no jogo 
+Tabs.Player:AddButton({ 
+    Title = "Reentrar no Jogo", 
+    Description = "Clique para reentrar no jogo atual.", 
+    Callback = function() 
+        TeleportService:Teleport(PlaceId, Player) 
+    end 
+}) 
+
+local PlayerService = game:GetService("Players") 
+local RunService = game:GetService("RunService") 
+local SelectedPlayer = nil 
+local HeadSitActive = false 
+local ViewPlayerActive = false 
+local BangActive = false 
+
+-- Função para buscar jogador por DisplayName ou Username 
+local function GetPlayerByName(query) 
+    for _, player in ipairs(PlayerService:GetPlayers()) do 
+        if player.Name:lower():sub(1, #query) == query:lower() or  
+           player.DisplayName:lower():sub(1, #query) == query:lower() then 
+            return player 
+        end 
+    end 
+    return nil 
+end 
+
+-- Função para ativar/desativar o HeadSit 
+local function ToggleHeadSit(state) 
+    if state then 
+        if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("Head") then 
+            HeadSitActive = true 
+            Fluent:Notify({ Title = "HeadSit", Content = "Sentando na cabeça de " .. SelectedPlayer.Name }) 
+
+            local playerRoot = PlayerService.LocalPlayer.Character and PlayerService.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") 
+            local humanoid = PlayerService.LocalPlayer.Character and PlayerService.LocalPlayer.Character:FindFirstChild("Humanoid") 
+
+            if playerRoot and humanoid then 
+                humanoid.Sit = true -- Coloca o personagem na posição de "sentado" 
+
+                -- Loop para manter o jogador sentado na cabeça do selecionado 
+                RunService.RenderStepped:Connect(function() 
+                    if HeadSitActive and SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("Head") then 
+                        local targetHead = SelectedPlayer.Character.Head 
+                        playerRoot.CFrame = targetHead.CFrame * CFrame.new(0, 1.5, 0) -- Ajusta para manter o personagem sentado 
+                        playerRoot.Anchored = true 
+                    end 
+                end) 
+            else 
+                Fluent:Notify({ Title = "Erro", Content = "Personagem inválido para o HeadSit." }) 
+            end 
+        else 
+            Fluent:Notify({ Title = "Erro", Content = "Nenhum jogador válido selecionado." }) 
+        end 
+    else 
+        HeadSitActive = false 
+        local playerRoot = PlayerService.LocalPlayer.Character and PlayerService.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") 
+        local humanoid = PlayerService.LocalPlayer.Character and PlayerService.LocalPlayer.Character:FindFirstChild("Humanoid") 
+
+        if playerRoot and humanoid then 
+            playerRoot.Anchored = false 
+            humanoid.Sit = false -- Volta o personagem ao controle normal 
+        end 
+        Fluent:Notify({ Title = "HeadSit", Content = "HeadSit desativado." }) 
+    end 
+end 
+
+-- Função para ativar/desativar a visualização do jogador selecionado 
+local function ToggleViewPlayer(state) 
+    if state then 
+        if SelectedPlayer and SelectedPlayer.Character and SelectedPlayer.Character:FindFirstChild("Humanoid") then 
+            ViewPlayerActive = true 
+            game.Workspace.CurrentCamera.CameraSubject = SelectedPlayer.Character.Humanoid 
+            Fluent:Notify({ Title = "Visualizar Jogador", Content = "Visualizando " .. SelectedPlayer.Name }) 
+        else 
+            Fluent:Notify({ Title = "Erro", Content = "Nenhum jogador válido selecionado." }) 
+        end 
+    else 
+        ViewPlayerActive = false 
+        game.Workspace.CurrentCamera.CameraSubject = PlayerService.LocalPlayer.Character.Humanoid 
+        Fluent:Notify({ Title = "Visualizar Jogador", Content = "Visualização desativada." }) 
+    end 
+end 
+
+-- Input para selecionar o jogador 
+local PlayerInput = Tabs.Player:AddInput("PlayerInput", { 
+    Title = "Nome ou Display Name", 
+    Placeholder = "Digite as iniciais...", 
+    Callback = function(value) 
+        SelectedPlayer = GetPlayerByName(value) 
+    end 
+}) 
+
+-- Toggle para ativar/desativar o HeadSit 
+local HeadSitToggle = Tabs.Player:AddToggle("HeadSitToggle", { 
+    Title = "Ativar HeadSit", 
+    Default = false, 
+    Callback = function(state) 
+        ToggleHeadSit(state) 
+    end 
+}) 
+
+-- Toggle para ativar/desativar a visualização do jogador 
+local ViewToggle = Tabs.Player:AddToggle("ViewToggle", { 
+    Title = "Visualizar Jogador", 
+    Default = false, 
+    Callback = function(state) 
+        ToggleViewPlayer(state) 
+    end 
+}) 
+
+local Players = game:GetService("Players") 
+local LocalPlayer = Players.LocalPlayer 
+local SelectedPlayer 
+local bangActive = false 
+
+-- Função para encontrar o jogador com base nas iniciais, parte do nome ou display name 
+local function findPlayerByName(query) 
+    for _, player in pairs(Players:GetPlayers()) do 
+        if player.Name:lower():find(query:lower()) or player.DisplayName:lower():find(query:lower()) then 
+            return player 
+        end 
+    end 
+    return nil 
+end 
+
+-- Função para realizar o bang no jogador selecionado 
+local function bangPlayer(target) 
+    bangActive = true 
+    while bangActive and target and target.Character do 
+        local rootPart = target.Character:FindFirstChild("HumanoidRootPart") 
+        if rootPart then 
+            -- Posiciona um pouco atrás do jogador 
+            LocalPlayer.Character.HumanoidRootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, 1.3) 
+            wait(0.08) 
+
+            -- Move-se levemente para frente (mas sem ultrapassar o jogador) 
+            LocalPlayer.Character.HumanoidRootPart.CFrame = rootPart.CFrame * CFrame.new(0, 0, 1.6) 
+            wait(0.08) 
+        else 
+            break 
+        end 
+    end 
+end 
+
+-- Função para ativar/desativar o Bang 
+local function ToggleBang(state) 
+    bangActive = state 
+    if state then 
+        local player = findPlayerByName(SelectedPlayer) 
+        if player then 
+            bangPlayer(player) 
+        else 
+            print("Jogador não encontrado.") 
+            bangActive = false 
+        end 
+    end 
+end 
+
+-- Input para selecionar o jogador 
+local PlayerInput = Tabs.Player:AddInput("PlayerInput", { 
+    Title = "Nome ou Display Name", 
+    Placeholder = "Digite as iniciais...", 
+    Callback = function(value) 
+        SelectedPlayer = value 
+    end 
+}) 
+
+-- Toggle para ativar/desativar o Bang 
+local BangToggle = Tabs.Player:AddToggle("BangToggle", { 
+    Title = "Comer jogador", 
+    Default = false, 
+    Callback = function(state) 
+        ToggleBang(state) 
+    end 
+}) 
+
+local Players = game:GetService("Players") 
+local LocalPlayer = Players.LocalPlayer 
+local backpackActive = false 
+local SelectedPlayer = nil 
+
+-- Função para encontrar o jogador pelo nome 
+local function findPlayerByName(name) 
+    for _, player in pairs(Players:GetPlayers()) do 
+        if player.Name:lower():sub(1, #name) == name:lower() or player.DisplayName:lower():sub(1, #name) == name:lower() then 
+            return player 
+        end 
+    end 
+    return nil 
+end 
+
+-- Função para reproduzir animação de sentar 
+local function PlaySitAnimation() 
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") 
+    if humanoid then 
+        local anim = Instance.new("Animation") 
+        anim.AnimationId = "rbxassetid://2825744402" -- ID da animação de sentar 
+        local track = humanoid:LoadAnimation(anim) 
+        track:Play() 
+        return track 
+    end 
+    return nil 
+end 
+
+-- Função para posicionar o personagem local na altura da cintura do jogador selecionado 
+local function backpackPlayer(target) 
+    local animTrack = PlaySitAnimation() -- Ativa a animação de sentar 
+    backpackActive = true 
+    local offsetDirection = 1 -- Direção do movimento (para frente e para trás) 
+
+    -- Ativa o PlatformStand para evitar que o personagem caia 
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid") 
+    if humanoid then 
+        humanoid.PlatformStand = true 
+    end 
+
+    while backpackActive and target and target.Character do 
+        local rootPart = target.Character:FindFirstChild("HumanoidRootPart") 
+        if rootPart then 
+            -- Calcula a posição para colocar a cabeça do personagem local na altura da cintura do jogador alvo 
+            LocalPlayer.Character.HumanoidRootPart.CFrame = rootPart.CFrame * CFrame.new(0, -1.5, 0.5 * offsetDirection) * CFrame.Angles(0, math.pi, 0) 
+
+            -- Alterna a direção para frente e para trás 
+            offsetDirection = -offsetDirection 
+            wait(0.1) 
+        else 
+            break 
+        end 
+    end 
+
+        -- Para a animação e desativa o PlatformStand quando desativar o backpack 
+    if animTrack then 
+        animTrack:Stop() 
+    end 
+    if humanoid then 
+        humanoid.PlatformStand = false 
+    end 
+end 
+
+-- Função para ativar/desativar o "backpack" 
+local function ToggleBackpack(state) 
+    backpackActive = state 
+    if state then 
+        local player = findPlayerByName(SelectedPlayer) 
+        if player then 
+            backpackPlayer(player) 
+        else 
+            print("Jogador não encontrado.") 
+            backpackActive = false 
+        end 
+    else 
+        backpackActive = false 
+    end 
+end 
+
+-- Input para selecionar o jogador 
+local PlayerInput = Tabs.Player:AddInput("PlayerInput", { 
+    Title = "Nome ou Display Name", 
+    Placeholder = "Digite as iniciais...", 
+    Callback = function(value) 
+        SelectedPlayer = value 
+    end 
+}) 
+
+-- Toggle para ativar/desativar o "backpack" 
+local BackpackToggle = Tabs.Player:AddToggle("BackpackToggle", { 
+    Title = "Mamar jogador", 
+    Default = false, 
+    Callback = function(state) 
+        ToggleBackpack(state) 
+    end 
+}) 
+
+local Players = game:GetService("Players") 
+local LocalPlayer = Players.LocalPlayer 
+local SelectedPlayer 
+local gogogoActive = false 
+
+-- Função para encontrar o jogador com base nas iniciais, parte do nome ou display name 
+local function findPlayerByName(query) 
+    for _, player in pairs(Players:GetPlayers()) do 
+        if player.Name:lower():find(query:lower()) or player.DisplayName:lower():find(query:lower()) then 
+            return player 
+        end 
+    end 
+    return nil 
+end 
+
+-- Função para obter a raiz do jogador 
+local function GetRoot(player) 
+    return player.Character and player.Character:FindFirstChild("HumanoidRootPart") 
+end 
+
+-- Função para reproduzir animação 
+local function PlayAnim(animationId) 
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") 
+    if humanoid then 
+        local anim = Instance.new("Animation") 
+        anim.AnimationId = "rbxassetid://" .. animationId 
+        local track = humanoid:LoadAnimation(anim) 
+        track:Play(0, 1, 1) 
+        return track 
+    end 
+    return nil 
+end 
+
+-- Função para parar animação 
+local function StopAnim(track) 
+    if track then 
+        track:Stop() 
+    end 
+end 
+
+-- Função para realizar o "bang" entre o torso e a cintura do jogador selecionado 
+local function gogogoPlayer(target) 
+    local player = target -- Define o jogador alvo 
+    local animTrack = PlayAnim(7202900159) -- Reproduz a animação 
+
+    if player then 
+        local root = GetRoot(LocalPlayer) 
+        local otherRoot = GetRoot(player) 
+
+        if root and otherRoot then 
+            -- Ativa o estado de ancoragem para o personagem local 
+            root.Anchored = true 
+
+            -- Desativa a gravidade do personagem 
+            local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid") 
+            if humanoid then 
+                humanoid.PlatformStand = true -- Impede que o personagem caia 
+            end 
+
+            repeat 
+                -- Calcula a posição entre o torso e a cintura do jogador e o faz "olhar" diretamente para o jogador 
+                local lookAtPosition = otherRoot.Position + Vector3.new(0, 1, 0) 
+                root.CFrame = CFrame.new(otherRoot.Position + otherRoot.CFrame.LookVector * 1.5 - Vector3.new(0, 0.5, 0), lookAtPosition) 
+
+                -- Alterna a posição para frente e para trás 
+                for i = -0.1, 0.1, 0.05 do 
+                    root.CFrame = CFrame.new(otherRoot.Position + otherRoot.CFrame.LookVector * (1.5 + i) - Vector3.new(0, 0.5, 0), lookAtPosition) 
+                    task.wait(0.1) 
+                end 
+            until not gogogoActive -- Continua até que o "bang" seja desativado 
+
+            StopAnim(animTrack) -- Para a animação 
+
+            -- Desativa o estado de ancoragem após a ação 
+            root.Anchored = false 
+            humanoid.PlatformStand = false -- Restaura a gravidade do personagem 
+        end 
+    end 
+end 
+
+-- Função para ativar/desativar o "bang" 
+local function ToggleGogogo(state) 
+    gogogoActive = state 
+    if state then 
+        local player = findPlayerByName(SelectedPlayer) 
+        if player then 
+            gogogoPlayer(player) 
+        else 
+            print("Jogador não encontrado.") 
+            gogogoActive = false 
+        end 
+    end 
+end 
+
+-- Input para selecionar o jogador 
+local PlayerInput = Tabs.Player:AddInput("PlayerInput", { 
+    Title = "Nome ou Display Name", 
+    Placeholder = "Digite as iniciais...", 
+    Callback = function(value) 
+        SelectedPlayer = value 
+    end 
+}) 
+
+-- Toggle para ativar/desativar o "bang" 
+local GogogoToggle = Tabs.Player:AddToggle("GogogoToggle", { 
+    Title = "Dar o bozó", 
+    Default = false, 
+    Callback = function(state) 
+        ToggleGogogo(state) 
+    end 
+}) 
+
+local Player = game.Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local RightArm = Character:WaitForChild("Right Arm") -- Certifique-se de que o nome está correto
+
+local isMoving = false -- Variável para controlar o movimento do braço
+
+local PoseEspecialToggle = Tabs.Player:AddToggle("PoseEspecialToggle", {
+    Title = "Braço",
+    Description = "Deixa o braço em uma pose e o move para frente e para trás.",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            SetPose()
+            isMoving = true
+            moveArm() -- Inicia o movimento do braço
+        else
+            ResetPose()
+            isMoving = false
         end
     end
+})
 
-    function InterfaceManager:BuildInterfaceSection(tab)
-        assert(self.Library, "Must set InterfaceManager.Library")
-		local Library = self.Library
-        local Settings = InterfaceManager.Settings
+function SetPose()
+    -- Define a pose inicial do braço
+    RightArm.CFrame = CFrame.new(1, 0, 0) * CFrame.Angles(math.rad(0), math.rad(0), math.rad(0)) -- Ajuste conforme necessário
+end
 
-        InterfaceManager:LoadSettings()
+function ResetPose()
+    -- Restaura a pose original do braço
+    RightArm.CFrame = CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, 0) -- Ajuste conforme necessário
+end
 
-		local section = tab:AddSection("Interface")
+function moveArm()
+    while isMoving do
+        -- Mova o braço para frente
+        RightArm.CFrame = RightArm.CFrame * CFrame.new(0, 0, 0.5) -- Ajuste o vetor conforme necessário
+        wait(0.5) -- Tempo de espera para o movimento
 
-		local InterfaceTheme = section:AddDropdown("InterfaceTheme", {
-			Title = "Theme",
-			Description = "Changes the interface theme.",
-			Values = Library.Themes,
-			Default = Settings.Theme,
-			Callback = function(Value)
-				Library:SetTheme(Value)
-                Settings.Theme = Value
-                InterfaceManager:SaveSettings()
-			end
-		})
-
-        InterfaceTheme:SetValue(Settings.Theme)
-	
-		if Library.UseAcrylic then
-			section:AddToggle("AcrylicToggle", {
-				Title = "Acrylic",
-				Description = "The blurred background requires graphic quality 8+",
-				Default = Settings.Acrylic,
-				Callback = function(Value)
-					Library:ToggleAcrylic(Value)
-                    Settings.Acrylic = Value
-                    InterfaceManager:SaveSettings()
-				end
-			})
-		end
-	
-		section:AddToggle("TransparentToggle", {
-			Title = "Transparency",
-			Description = "Makes the interface transparent.",
-			Default = Settings.Transparency,
-			Callback = function(Value)
-				Library:ToggleTransparency(Value)
-				Settings.Transparency = Value
-                InterfaceManager:SaveSettings()
-			end
-		})
-	
-		local MenuKeybind = section:AddKeybind("MenuKeybind", { 
-            Title = "Minimize Bind", 
-            Default = Settings.MenuKeybind 
-        })
-
-		MenuKeybind:OnChanged(function()
-			Settings.MenuKeybind = MenuKeybind.Value
-            InterfaceManager:SaveSettings()
-		end)
-
-		Library.MinimizeKeybind = MenuKeybind
-
-        -- Adicionando a função de minimizar/maximizar
-        MenuKeybind:OnClick(function()
-            InterfaceManager:ToggleWindow(Library)
-        end)
-
-        InterfaceManager:CreateFloatingButton(Library)  -- Cria o botão flutuante
-    end
-
-    -- Função para alternar a visibilidade da interface
-    function InterfaceManager:ToggleWindow(Library)
-        isMinimized = not isMinimized
-        Library:SetVisible(not isMinimized)
-    end
-
-    -- Função para criar um botão flutuante na tela
-    function InterfaceManager:CreateFloatingButton(Library)
-        local FloatingButton = Instance.new("TextButton")
-        FloatingButton.Size = UDim2.new(0, 50, 0, 50)
-        FloatingButton.Position = UDim2.new(0.9, 0, 0.1, 0)  -- Ajuste a posição conforme necessário
-        FloatingButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        FloatingButton.Text = "-"
-        FloatingButton.Parent = game.CoreGui
-
-        FloatingButton.MouseButton1Click:Connect(function()
-            self:ToggleWindow(Library)
-            FloatingButton.Text = isMinimized and "+" or "-"
-        end)
+        -- Mova o braço para trás
+        RightArm.CFrame = RightArm.CFrame * CFrame.new(0, 0, -0.5) -- Ajuste o vetor conforme necessário
+        wait(0.5) -- Tempo de espera para o movimento
     end
 end
 
-return InterfaceManager
+-- Variáveis Globais 
+local PlayerService = game:GetService("Players") 
+local Workspace = game:GetService("Workspace") 
+local ESPActive = false 
+local ESPLineActive = false 
+local UseDisplayName = false 
+local ESPNameColor = Color3.fromRGB(96, 205, 255) 
+local ESPLinhaColor = Color3.fromRGB(96, 205, 255) 
+
+-- Função para criar ESP no jogador 
+local function CreateESP(player) 
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then 
+        -- Nome ESP 
+        if ESPActive then 
+            local billboard = Instance.new("BillboardGui", player.Character.HumanoidRootPart) 
+            billboard.Name = "ESPName" 
+            billboard.Size = UDim2.new(0, 200, 0, 50) 
+            billboard.Adornee = player.Character.HumanoidRootPart 
+            billboard.AlwaysOnTop = true 
+
+            local textLabel = Instance.new("TextLabel", billboard) 
+            textLabel.Text = UseDisplayName and player.DisplayName or player.Name 
+            textLabel.Size = UDim2.new(1, 0, 1, 0) 
+            textLabel.TextColor3 = ESPNameColor 
+            textLabel.BackgroundTransparency = 1 
+        end 
+
+        -- Linha ESP 
+        if ESPLineActive then 
+            local line = Drawing.new("Line") 
+            line.Color = ESPLinhaColor 
+            line.From = Workspace.CurrentCamera.CFrame.Position 
+            line.To = player.Character.HumanoidRootPart.Position 
+            line.Visible = true 
+
+            -- Atualiza a linha em tempo real 
+            game:GetService("RunService").RenderStepped:Connect(function() 
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then 
+                    line.To = player.Character.HumanoidRootPart.Position 
+                else 
+                    line.Visible = false 
+                end 
+            end) 
+        end 
+    end 
+end 
+
+-- Função para remover ESP 
+local function RemoveESP(player) 
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then 
+        if player.Character.HumanoidRootPart:FindFirstChild("ESPName") then 
+            player.Character.HumanoidRootPart.ESPName:Destroy() 
+        end 
+    end 
+end 
+
+-- Toggle para ESP Name 
+Tabs.Esp:AddToggle("ESPNameToggle", { 
+    Title = "Ativar ESP Nome", 
+    Callback = function(state) 
+        ESPActive = state 
+        for _, player in ipairs(PlayerService:GetPlayers()) do 
+            if state then 
+                CreateESP(player) 
+            else 
+                RemoveESP(player) 
+            end 
+        end 
+    end 
+}) 
+
+-- Colorpicker para ESP Nome 
+local ESPNameColorPicker = Tabs.Esp:AddColorpicker("ESPNameColorPicker", { 
+    Title = "Cor do ESP Nome", 
+    Default = Color3.fromRGB(96, 205, 255) 
+}) 
+
+ESPNameColorPicker:OnChanged(function() 
+    ESPNameColor = ESPNameColorPicker.Value 
+    for _, player in ipairs(PlayerService:GetPlayers()) do 
+        if ESPActive then 
+            RemoveESP(player) 
+            CreateESP(player) 
+        end 
+    end 
+end)
+
+Tabs.Esp:AddToggle("ESPTracerToggle", { 
+    Title = "Ativar ESP Linha", 
+    Callback = function()
+    local tracer = Instance.new("Frame") -- Idk What I Was Smoking When Making This Scrip Hub, It Is Shit And I Will Remake Later 
+	tracer.Parent = TracersG
+	tracer.Name = Player.Name
+	tracer.Active = false
+	tracer.AnchorPoint = Vector2.new(.5, .5)
+	tracer.Visible = false
+
+	local co = coroutine.create(function()
+		game:GetService("RunService").RenderStepped:Connect(function()
+			if Player ~= PLAYER and Player and Player.Character and Player.Character.FindFirstChild(Player.Character, "Humanoid") and Player.Character.Humanoid.Health > 0 then
+				local TargetPart = Player.Character:FindFirstChild("HumanoidRootPart")
+				local ScreenPoint, OnScreen = CurrentCam:WorldToScreenPoint(TargetPart.Position)
+				local distance 
+				-- Made By Mick Gordon
+				distance = math.floor(0.5+(game.Workspace.CurrentCamera.CFrame.Position - Player.Character:WaitForChild("HumanoidRootPart").Position).magnitude)
+
+				local screenpointmain = Vector2.new(ScreenPoint.X, ScreenPoint.Y + (2500 / distance)) --  / distance so it can be at the bottom of the box.
+				local posd = UIS:GetMouseLocation()
+				local MouseOrigin = Vector2.new(posd.X, posd.Y - 36)
+				local Origin = Vector2.new(CurrentCam.ViewportSize.X/2, CurrentCam.ViewportSize.Y - 1)
+				local Position = (Origin + screenpointmain) / 2
+				local Length = (Origin - screenpointmain).Magnitude
+				tracer.Rotation = math.deg(math.atan2(screenpointmain.Y - Origin.Y, screenpointmain.X - Origin.X))
+
+
+				Position = (Origin + screenpointmain) / 2
+				Length = (Origin - screenpointmain).Magnitude
+				tracer.Rotation = math.deg(math.atan2(screenpointmain.Y - Origin.Y, screenpointmain.X - Origin.X))
+
+
+				if OnScreen then
+					if DeleteMob.ESP.Tracers.Enabled == true and OnScreen then
+						if DeleteMob.ESP.Tracers.TeamCheck == true then
+							if Player.TeamColor == PLAYER.TeamColor then
+								tracer.Visible = false
+							else
+								tracer.Visible = true
+							end
+						else -- Made By Mick Gordon
+							tracer.Visible = true
+						end
+					else
+						tracer.Visible = false
+					end-- Made By Mick Gordon
+
+					if DeleteMob.ESP.Tracers.TeamColor == true then
+						tracer.BackgroundColor3 = Player.TeamColor.Color
+					else
+						tracer.BackgroundColor3 = DeleteMob.ESP.Tracers.Color
+					end
+
+					tracer.BorderColor3 = Color3.fromRGB(27, 42, 53)
+					tracer.Position = UDim2.new(0, Position.X, 0, Position.Y)
+					tracer.Size = UDim2.new(0, Length, 0, 2)
+				else
+					tracer.Visible = false
+				end
+
+				if not (game:GetService"Players":FindFirstChild(Player.Name)) then
+					Fov:FindFirstChild(Player.Name):Destroy()
+					coroutine.yield()
+				end
+			else
+				tracer.Visible = false
+			end
+		end)
+	end)
+	coroutine.resume(co)-- Made By Mick Gordon
+end
+
+function isVisible(p, ...)
+	
+	if not (DeleteMob.Aimbot.WallCheck == true) then
+		return true
+	end
+	
+	return #CurrentCam:GetPartsObscuringTarget({ p }, { CurrentCam, PLAYER.Character, ... }) == 0 
+end-- Made By Mick Gordon
+
+-- Addons: 
+-- SaveManager (Allows you to have a configuration system) 
+-- InterfaceManager (Allows you to have a interface managment system) 
+
+-- Hand the library over to our managers 
+SaveManager:SetLibrary(Fluent) 
+InterfaceManager:SetLibrary(Fluent) 
+
+-- Ignore keys that are used by ThemeManager. 
+-- (we dont want configs to save themes, do we?) 
+SaveManager:IgnoreThemeSettings() 
+
+-- You can add indexes of elements the save manager should ignore 
+SaveManager:SetIgnoreIndexes({}) 
+
+-- use case for doing it this way: 
+-- a script hub could have themes in a global folder 
+-- and game configs in a separate folder per game 
+InterfaceManager:SetFolder("FluentScriptHub") 
+SaveManager:SetFolder("FluentScriptHub/specific-game") 
+
+InterfaceManager:BuildInterfaceSection(Tabs.Esp) 
+SaveManager:BuildConfigSection(Tabs.Esp) 
+
+
+Window:SelectTab(1) 
+
+Fluent:Notify({ 
+    Title = "Blessed Hub", 
+    Content = "Script carregado.", 
+    Duration = 8 
+}) 
+
+-- You can use the SaveManager:LoadAutoloadConfig() to load a config 
+-- which has been marked to be one that auto loads! 
+SaveManager:LoadAutoloadConfig()
